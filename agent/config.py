@@ -1,0 +1,7 @@
+SERVER_URL = "http://127.0.0.1:8001/events"
+
+DEVICE_ID = "DEVICE-001"
+
+USERNAME = "employee_a"
+
+MONITOR_INTERVAL = 5
