@@ -1,0 +1,3 @@
+total_events,login_events,failed_logins,file_access_count,confidential_file_access,process_count,usb_connections,usb_disconnections,network_connections,unique_network_destinations,after_hours_events,label
+4,1,0,1,0,1,0,0,1,1,0,0
+7,2,2,2,2,1,1,0,1,1,7,1
