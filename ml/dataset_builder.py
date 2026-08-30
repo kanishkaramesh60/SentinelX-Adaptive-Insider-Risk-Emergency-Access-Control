@@ -1,96 +1,173 @@
+import sqlite3
 import csv
 import os
+from collections import defaultdict
+from datetime import datetime, timedelta
 from feature_engineering import build_features
-OUTPUT_FILE = "ml/data/behavior_dataset.csv"
-def create_sample_events():
-    normal_events = [
-        {
-            "event_type": "login",
-            "action": "login_success",
-            "resource": "user",
-            "timestamp": "2026-08-30T10:00:00"
-        },
-        {
-            "event_type": "file",
-            "action": "file_access",
-            "resource": "documents/report.txt",
-            "timestamp": "2026-08-30T10:30:00"
-        },
-        {
-            "event_type": "process",
-            "action": "process_start",
-            "resource": "chrome.exe",
-            "timestamp": "2026-08-30T10:35:00"
-        },
-        {
-            "event_type": "network",
-            "action": "network_connection",
-            "resource": "example.com:443",
-            "timestamp": "2026-08-30T10:40:00"
-        }
-    ]
-    suspicious_events = [
-        {
-            "event_type": "login",
-            "action": "login_failed",
-            "resource": "user",
-            "timestamp": "2026-08-30T02:00:00"
-        },
-        {
-            "event_type": "login",
-            "action": "login_failed",
-            "resource": "user",
-            "timestamp": "2026-08-30T02:01:00"
-        },
-        {
-            "event_type": "file",
-            "action": "file_access",
-            "resource": "confidential/file1.txt",
-            "timestamp": "2026-08-30T02:05:00"
-        },
-        {
-            "event_type": "file",
-            "action": "file_access",
-            "resource": "confidential/file2.txt",
-            "timestamp": "2026-08-30T02:06:00"
-        },
-        {
-            "event_type": "usb",
-            "action": "usb_connected",
-            "resource": "USB_STORAGE",
-            "timestamp": "2026-08-30T02:10:00"
-        },
-        {
-            "event_type": "process",
-            "action": "process_start",
-            "resource": "powershell.exe",
-            "timestamp": "2026-08-30T02:11:00"
-        },
-        {
-            "event_type": "network",
-            "action": "network_connection",
-            "resource": "unknown-destination:443",
-            "timestamp": "2026-08-30T02:12:00"
-        }
-    ]
-    return [
-        (normal_events, 0),
-        (suspicious_events, 1)
-    ]
+BASE_DIR = os.path.dirname(
+    os.path.dirname(
+        os.path.abspath(__file__)
+    )
+)
+DATABASE = os.path.join(
+    BASE_DIR,
+    "data.db"
+)
+OUTPUT_FILE = os.path.join(
+    BASE_DIR,
+    "ml",
+    "data",
+    "behavior_dataset.csv"
+)
+WINDOW_MINUTES = 30
+def get_events():
+    connection = sqlite3.connect(
+        DATABASE
+    )
+    connection.row_factory = sqlite3.Row
+    cursor = connection.cursor()
+    cursor.execute(
+        """
+        SELECT
+            id,
+            device_id,
+            username,
+            event_type,
+            action,
+            resource,
+            source_ip,
+            timestamp,
+            risk_score
+        FROM security_events
+        WHERE username IS NOT NULL
+        AND username != 'string'
+        AND event_type IS NOT NULL
+        AND event_type != 'string'
+        AND timestamp IS NOT NULL
+        AND timestamp != 'string'
+        ORDER BY username, timestamp
+        """
+    )
+    rows = cursor.fetchall()
+    connection.close()
+    return [dict(row) for row in rows]
+def group_events(events):
+    groups = defaultdict(list)
+    for event in events:
+        username = event["username"]
+        try:
+            timestamp = datetime.fromisoformat(
+                event["timestamp"]
+            )
+        except ValueError:
+            continue
+        bucket_minute = (
+            timestamp.minute
+            // WINDOW_MINUTES
+        ) * WINDOW_MINUTES
+        window_start = timestamp.replace(
+            minute=bucket_minute,
+            second=0,
+            microsecond=0
+        )
+        key = (
+            username,
+            window_start
+        )
+        groups[key].append(event)
+    return groups
+def calculate_label(events):
+    suspicious_indicators = 0
+    for event in events:
+        event_type = str(
+            event.get("event_type", "")
+        ).lower()
+        action = str(
+            event.get("action", "")
+        ).lower()
+        resource = str(
+            event.get("resource", "")
+        ).lower()
+        if (
+            "failed" in action
+            or "denied" in action
+        ):
+            suspicious_indicators += 1
+        if "usb" in event_type:
+            suspicious_indicators += 1
+        if (
+            "confidential" in resource
+            or "sensitive" in resource
+        ):
+            suspicious_indicators += 1
+        if (
+            "powershell" in resource
+            or "cmd.exe" in resource
+        ):
+            suspicious_indicators += 1
+    if suspicious_indicators >= 3:
+        return 1
+    return 0
 def main():
+    print("=" * 70)
+    print("SENTINELX - REAL EVENT DATASET BUILDER")
+    print("=" * 70)
+    print(
+        f"Database: {DATABASE}"
+    )
+    events = get_events()
+    print(
+        f"Valid events loaded: {len(events)}"
+    )
+    if not events:
+        print(
+            "[ERROR] No valid events found."
+        )
+        return
+    groups = group_events(events)
+    print(
+        f"Behavior windows created: {len(groups)}"
+    )
+    rows = []
+    for (
+        username,
+        window_start
+    ), window_events in groups.items():
+        features = build_features(
+            window_events
+        )
+        features["username"] = username
+        features["window_start"] = (
+            window_start.isoformat()
+        )
+        features["event_count"] = len(
+            window_events
+        )
+        features["label"] = calculate_label(
+            window_events
+        )
+        rows.append(features)
     os.makedirs(
-        "ml/data",
+        os.path.dirname(OUTPUT_FILE),
         exist_ok=True
     )
-    samples = create_sample_events()
-    rows = []
-    for events, label in samples:
-        features = build_features(events)
-        features["label"] = label
-        rows.append(features)
-    fieldnames = list(
-        rows[0].keys()
-    )
+    fieldnames = [
+        "username",
+        "window_start",
+        "total_events",
+        "event_count",
+        "login_events",
+        "failed_logins",
+        "file_access_count",
+        "confidential_file_access",
+        "process_count",
+        "usb_connections",
+        "usb_disconnections",
+        "network_connections",
+        "unique_network_destinations",
+        "after_hours_events",
+        "label"
+    ]
     with open(
         OUTPUT_FILE,
         "w",
@@ -103,15 +180,29 @@ def main():
         )
         writer.writeheader()
         writer.writerows(rows)
-    print("=" * 65)
-    print("SENTINELX - DATASET BUILDER")
-    print("=" * 65)
+    normal = sum(
+        1
+        for row in rows
+        if row["label"] == 0
+    )
+    suspicious = sum(
+        1
+        for row in rows
+        if row["label"] == 1
+    )
+    print("-" * 70)
     print(
-        f"Dataset created: {OUTPUT_FILE}"
+        f"ML samples generated: {len(rows)}"
     )
     print(
-        f"Samples: {len(rows)}"
+        f"Normal samples: {normal}"
     )
-    print("=" * 65)
+    print(
+        f"Suspicious samples: {suspicious}"
+    )
+    print(
+        f"Dataset: {OUTPUT_FILE}"
+    )
+    print("=" * 70)
 if __name__ == "__main__":
     main()

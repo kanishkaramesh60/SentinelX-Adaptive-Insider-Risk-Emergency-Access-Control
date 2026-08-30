@@ -2,8 +2,7 @@ from datetime import datetime
 def is_after_hours(timestamp):
     try:
         dt = datetime.fromisoformat(timestamp)
-        hour = dt.hour
-        if hour < 9 or hour >= 18:
+        if dt.hour < 9 or dt.hour >= 18:
             return 1
         return 0
     except Exception:
@@ -34,38 +33,51 @@ def build_features(events):
         resource = str(
             event.get("resource", "")
         ).lower()
-        timestamp = event.get(
-            "timestamp",
-            ""
+        timestamp = str(
+            event.get("timestamp", "")
         )
-        if event_type == "login":
+        if (
+            "login" in event_type
+            or "authentication" in event_type
+        ):
             features["login_events"] += 1
             if (
                 "fail" in action
                 or "failed" in action
+                or "denied" in action
             ):
                 features["failed_logins"] += 1
-        if event_type == "file":
+        if (
+            "file" in event_type
+            or "file" in action
+        ):
             features["file_access_count"] += 1
             if (
                 "confidential" in resource
                 or "sensitive" in resource
+                or "secret" in resource
             ):
                 features[
                     "confidential_file_access"
                 ] += 1
-        if event_type == "process":
+        if (
+            "process" in event_type
+            or "execute" in action
+        ):
             features["process_count"] += 1
-        if event_type == "usb":
-            if "connected" in action:
+        if "usb" in event_type:
+            if "connect" in action:
                 features[
                     "usb_connections"
                 ] += 1
-            elif "disconnected" in action:
+            if "disconnect" in action:
                 features[
                     "usb_disconnections"
                 ] += 1
-        if event_type == "network":
+        if (
+            "network" in event_type
+            or "network" in action
+        ):
             features[
                 "network_connections"
             ] += 1
