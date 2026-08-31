@@ -1,0 +1,58 @@
+[
+    {
+        "timestamp": "2026-08-31T18:50:46.800617",
+        "username": "employee_a",
+        "risk_score": 15,
+        "risk_level": "LOW",
+        "action": "MONITOR"
+    },
+    {
+        "timestamp": "2026-08-31T18:50:46.803568",
+        "username": "employee_a",
+        "risk_score": 35,
+        "risk_level": "MEDIUM",
+        "action": "LOG_AND_ALERT"
+    },
+    {
+        "timestamp": "2026-08-31T18:50:46.815373",
+        "username": "employee_a",
+        "risk_score": 65,
+        "risk_level": "HIGH",
+        "action": "ENHANCED_MONITORING"
+    },
+    {
+        "timestamp": "2026-08-31T18:50:46.837390",
+        "username": "employee_a",
+        "risk_score": 90,
+        "risk_level": "CRITICAL",
+        "action": "REQUIRE_SECURITY_REVIEW"
+    },
+    {
+        "timestamp": "2026-08-31T18:52:02.728411",
+        "username": "employee_a",
+        "risk_score": 15,
+        "risk_level": "LOW",
+        "action": "MONITOR"
+    },
+    {
+        "timestamp": "2026-08-31T18:52:02.733251",
+        "username": "employee_a",
+        "risk_score": 35,
+        "risk_level": "MEDIUM",
+        "action": "LOG_AND_ALERT"
+    },
+    {
+        "timestamp": "2026-08-31T18:52:02.760454",
+        "username": "employee_a",
+        "risk_score": 65,
+        "risk_level": "HIGH",
+        "action": "ENHANCED_MONITORING"
+    },
+    {
+        "timestamp": "2026-08-31T18:52:02.783394",
+        "username": "employee_a",
+        "risk_score": 90,
+        "risk_level": "CRITICAL",
+        "action": "REQUIRE_SECURITY_REVIEW"
+    }
+]
