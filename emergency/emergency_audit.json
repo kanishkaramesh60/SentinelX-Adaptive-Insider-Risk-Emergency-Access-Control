@@ -1,0 +1,18 @@
+[
+    {
+        "timestamp": "2026-08-31T19:00:18.692347",
+        "username": "employee_a",
+        "resource": "test_data\\confidential\\test1.txt",
+        "result": "GRANTED",
+        "reason": "EMERGENCY_ACCESS_APPROVED",
+        "enhanced_monitoring": true
+    },
+    {
+        "timestamp": "2026-08-31T19:05:25.067176",
+        "username": "employee_a",
+        "resource": "test_data\\confidential\\test1.txt",
+        "result": "GRANTED",
+        "reason": "EMERGENCY_ACCESS_APPROVED",
+        "enhanced_monitoring": true
+    }
+]
